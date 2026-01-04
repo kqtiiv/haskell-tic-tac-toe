@@ -15,7 +15,7 @@ import Helpers
 type Position = (Int, Int)
 
 gameOver :: Board -> Bool
-gameOver b = checkLines allLines
+gameOver b = checkLines (rows b) || checkLines (cols b) || checkLines (diags b)
     where 
         checkLines :: [[Cell]] -> Bool 
         checkLines ls = any hasWon (map nubOrd ls) 
@@ -24,17 +24,14 @@ gameOver b = checkLines allLines
         hasWon [x] = not (isEmpty x)  -- won if singleton is not empty
         hasWon _ = False
 
-        allLines = rows b ++ cols b ++ diags b 
-
 --
 -- Moves must be of the form "row col" where row and col are integers
 -- separated by whitespace. Bounds checking happens in tryMove, not here.
 --
 parsePosition :: String -> Maybe Position
-parsePosition xs = case words xs of 
-                   [a, b] -> (,) <$> readMaybe a <*> readMaybe b
-                   _      -> Nothing
-
+parsePosition xs = do 
+    [a, b] <- pure $ words xs 
+    (,) <$> readMaybe a <*> readMaybe b
 
 tryMove :: Player -> Position -> Board -> Maybe Board
 tryMove player (i, j) (Board n cells) = do 

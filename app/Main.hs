@@ -27,26 +27,27 @@ prettyPrint b = putStrLn $ unlines (map joinRows rowList)
 -- doParseAction :: (String -> Maybe a) -> IO a
 -- doParseAction :: String -> (String -> Maybe a) -> IO a
 
+-- better 
+untilJustM :: Monad m => m (Maybe a) -> m a 
+untilJustM mmse = mmse >>= maybe (untilJustM mmse) return 
+
+doParseAction :: String -> (String -> Maybe a) -> IO a 
+doParseAction msg valid = untilJustM $ valid <$> (putStrLn msg *> getLine)
+
 -- | Repeatedly read a target board position and invoke tryMove until
 -- the move is successful (Just ...).
+
 takeTurn :: Board -> Player -> IO Board
 takeTurn b p = do 
   putStrLn ("Player " ++ show p) 
-  putStrLn "Enter the grid position to play ensuring there is a space between the row and column number: "
-  pos <- getLine
-  case parsePosition pos of 
-    Nothing -> 
-      do 
-      putStrLn "Enter the position in the correct format!"
-      takeTurn b p 
-    Just position -> 
-      do 
-      case tryMove p position b of 
-        Nothing -> 
-          do 
-          putStrLn "Invalid move. Try again."
-          takeTurn b p 
-        Just updatedBoard -> return updatedBoard 
+  let prompt = "Enter the grid position in the form: row col"
+  updatedBoard <- doParseAction prompt validate
+  return updatedBoard
+  where 
+    validate s = do 
+      pos <- parsePosition s
+      move <- tryMove p pos b
+      return move
 
 -- | Manage a game by repeatedly: 1. printing the current board, 2. using
 -- takeTurn to return a modified board, 3. checking if the game is over,
@@ -66,21 +67,13 @@ playGame b p = do
 
 -- | Print a welcome message, read the board dimension, invoke playGame and
 -- exit with a suitable message.
-doParseAction :: (String -> Maybe a) -> IO a 
-doParseAction f = do 
-  line <- getLine 
-  case f line of 
-    Nothing -> do 
-      putStrLn "Invalid value. Please try again."
-      doParseAction f
-    Just val -> return val
 
 main :: IO ()
 main = do
   disableBuffering -- don't remove!
   putStrLn "Welcome to Tic Tac Toe!"
-  putStrLn "Enter the board size (NxN): "
-  n <- doParseAction readMaybe
+  let prompt = "Enter the board size (NxN): "
+  n <- doParseAction prompt $ (filterMaybe (>0)).readMaybe
   playGame (emptyBoard n) startingPlayer
   return ()
   
